@@ -1,0 +1,111 @@
+# Line Follower Robot (LFR) — Bill of Materials & Hardware Specifications
+
+## 1. Executive Summary
+This document provides the complete hardware specification, Bill of Materials (BOM), electromechanical design rules, and electrical connection architecture for the high-performance Arduino Nano PID Line Follower Robot (LFR).
+
+The robot utilizes a differential drive configuration with high-speed N20 micro metal gearmotors, driven by a Toshiba TB6612FNG dual MOSFET H-bridge motor driver. Line sensing is achieved using an 8-channel TCRT5000 / RSL 08 reflectance sensor array directly wired to the analog inputs (A0–A7) of an ATmega328P microcontroller running at 16 MHz.
+
+---
+
+## 2. Master Bill of Materials (BOM)
+
+| Item | Subsystem / Description | Exact Part / Model Spec | Qty | Reference Designator | Key Specs & Notes |
+| :--- | :--- | :--- | :---: | :--- | :--- |
+| **01** | Main Microcontroller | Arduino Nano V3.0 (ATmega328P) | 1 | MCU (U1) | 16 MHz, 5V Logic, 32KB Flash, 2KB SRAM, 1KB EEPROM |
+| **02** | Dual Motor Driver | Toshiba TB6612FNG Breakout Module | 1 | MD1 | 1.2A cont / 3.2A peak per channel, VM: 4.5V-13.5V, STBY tied to 5V |
+| **03** | IR Reflectance Array | RSL 08 / TCRT5000 8-Channel Bar | 1 | SENS1 (A0 - A7) | 8x Analog Phototransistor outputs, **Strict 3mm - 5mm ground clearance** |
+| **04** | Drive Actuators | N20 Micro Metal Gearmotors | 2 | M1 (Left), M2 (Right) | 6V-12V, 500-1000 RPM (10:1 or 30:1 ratio), Stall: 0.8A - 1.2A |
+| **05** | Drive Wheels | N20 High-Traction Wheels | 2 | W1, W2 | 34mm - 43mm Diameter, silicone rubber tread, 3mm D-shaft |
+| **06** | Pivot / Caster | Low-Friction Ball Caster / Glide Pad | 1 | CAS1 | 10mm-15mm steel ball caster or low-profile Teflon skid |
+| **07** | Battery Pack | 2S (7.4V) or 3S (11.1V) LiPo Battery | 1 | BATT1 | 450mAh - 850mAh, 25C - 45C discharge rating, JST/XT30 connector |
+| **08** | Step-Down Buck Converter | Mini-360 (MP2307) or LM2596 DC-DC | 1 | REG1 | Input: 7.4V-12V, Output tuned to 5.0V @ 2A-3A continuous |
+| **09** | Bulk Filter Capacitor | 470uF - 1000uF 25V Low-ESR Electrolytic | 1 | C1 | Connected directly across TB6612FNG VM and GND pins |
+| **10** | High-Frequency Snubbers | 100nF (0.1uF) 50V Ceramic Disc (MLCC) | 2 | C2, C3 | Soldered across N20 motor solder lugs for RF arc suppression |
+| **11** | Main Power Switch | SPST / SPDT Slide or Heavy Toggle | 1 | SW1 | Rated >= 3A DC |
+| **12** | Overcurrent Protection | Inline Fuse Holder & Fuse | 1 | F1 | 2.0A - 3.0A fast-acting blade or cartridge fuse |
+| **13** | UI Pushbutton 1 | 6x6mm Momentary Tactile Switch | 1 | BTN1 (D11) | PID Start/Stop toggle, Active-LOW to GND (INPUT_PULLUP) |
+| **14** | UI Pushbutton 2 | 6x6mm Momentary Tactile Switch | 1 | BTN2 (D12) | Calibration & Halt, Active-LOW to GND (INPUT_PULLUP) |
+| **15** | Status LED | Onboard Nano LED (Pin D13) | 1 | LED1 (D13) | Visual status / calibration blink feedback |
+| **16** | Chassis / Frame | 3D-Printed (PLA/PETG) / Acrylic | 1 | CHASSIS | Rigid, lightweight differential drive base |
+| **17** | Fasteners & Standoffs | M2 / M3 Standoffs, Screws, Nuts | 1 Set | HDW1 | Mounting hardware for motors, PCB, and caster |
+| **18** | Wiring / Hookup Wire | 18-20 AWG (Power) & 24-26 AWG (Logic) | 1 Set | WIRE1 | High-flex silicone multi-strand hookup wire |
+
+---
+
+## 3. Subsystem Specifications & Engineering Guidelines
+
+### 3.1. Microcontroller: Arduino Nano (ATmega328P)
+- **Clock**: 16 MHz external crystal (16 MIPS).
+- **Supply Logic**: 5.0V DC regulated.
+- **Memory**: 32KB Flash, 2KB SRAM, 1KB EEPROM.
+- **EEPROM Storage**: Non-volatile calibration values (`whiteMin[8]`, `blackMax[8]`, `centerPos`) are preserved across power cycles using a magic byte (`0x5A`).
+- **ADC Configuration**: 8 direct analog channels (A0 to A7). Eliminates external multiplexers (CD4051), allowing sequential conversions with minimum latency.
+- **PWM Channels**: Timer 0 hardware PWM on pins D5 (PWMB) and D6 (PWMA) running at ~976 Hz.
+
+### 3.2. Motor Driver: Toshiba TB6612FNG Dual H-Bridge
+- **Technology**: Power MOSFET H-bridges with low ON-resistance ($R_{DS(on)} \approx 0.5\,\Omega$).
+- **Efficiency Advantage over L298N**: The bipolar L298N drops 1.8V - 2.5V as heat. The TB6612FNG drops less than 0.2V at nominal load, delivering higher voltage to the motors with virtually zero heat generation.
+- **Ratings**:
+  - Motor Supply Voltage ($V_M$): 2.5V to 13.5V (operating at 7.4V - 11.1V).
+  - Logic Supply Voltage ($V_{CC}$): 2.7V to 5.5V (connected to 5.0V regulated bus).
+  - Continuous Current: 1.2A per channel.
+  - Peak Current: 3.2A per channel.
+- **STBY Pin Requirement**:
+  - The TB6612FNG `STBY` (Standby) pin **MUST BE TIED DIRECTLY TO THE 5V LOGIC BUS**. If `STBY` is floating or grounded, the motor driver outputs remain in high-impedance (tri-state) shutdown and the motors will not spin.
+
+### 3.3. Sensor Array: RSL 08 / TCRT5000 8-Channel Reflectance Array
+- **Optics**: 8x TCRT5000 infrared emitter-phototransistor pairs spaced along a straight bar.
+- **Output**: 8 analog voltage lines connected to Arduino pins A0–A7.
+- **Mounting Guidelines**:
+  - **Ground Clearance Requirement: MUST maintain 3mm to 5mm ground clearance.**
+  - Distance < 2.5mm: Optical clipping and blind spot occurs because emitter beam and phototransistor focal cones do not overlap.
+  - Distance > 6.0mm: Infrared return intensity drops off rapidly ($1/r^2$), degrading signal contrast between black and white.
+
+### 3.4. Actuators: N20 Micro Metal Gearmotors
+- **Operating Voltage**: 6.0V Nominal (capable of 7.4V with PWM limit).
+- **Gear Ratio & Speed**: 10:1 to 30:1 gear ratio providing 600–1000 RPM at 6V.
+- **Stall Current**: ~0.8A to 1.2A per motor at stall.
+- **Noise Suppression**: Solder a 100nF (0.1uF) ceramic capacitor across each motor's solder lugs to suppress brush commutation noise.
+
+### 3.5. Power Distribution & Star Grounding Topology
+- **Battery**: 2S (7.4V) or 3S (11.1V) LiPo battery, 450mAh - 850mAh, 25C+.
+- **Step-Down Regulator**: Mini-360 or LM2596 DC-DC buck converter stepping battery voltage down to 5.0V DC (2A-3A output).
+  - Do **not** power the system via the Arduino Nano's onboard linear regulator (AMS1117). The 8 sensor LEDs alone draw ~160mA; at 11.1V input, the linear regulator would dissipate over 1.2W and shut down thermally.
+- **Bulk Decoupling**: A 470uF to 1000uF 25V low-ESR electrolytic capacitor placed directly across TB6612FNG `VM` and `GND` absorbs inductive transient spikes and prevents brownouts during sudden motor reversals.
+- **Star Grounding**: High-current motor ground returns must **never** be daisy-chained with sensitive analog sensor grounds. Connect Battery (-), TB6612 GND, Buck GND, Nano GND, and Sensor GND to a single central Star Ground junction point.
+
+---
+
+## 4. Master Pin Connections Matrix
+
+| Nano Pin | Subsystem | Target Device Pin | Direction | Function |
+| :--- | :--- | :--- | :--- | :--- |
+| **D2** | Left Motor | TB6612 BIN1 | Output | Left Motor Forward Direction |
+| **D4** | Left Motor | TB6612 BIN2 | Output | Left Motor Reverse Direction |
+| **D5** | Left Motor | TB6612 PWMB | Output (PWM) | Left Motor Speed (Timer 0 PWM) |
+| **D6** | Right Motor | TB6612 PWMA | Output (PWM) | Right Motor Speed (Timer 0 PWM) |
+| **D7** | Right Motor | TB6612 AIN1 | Output | Right Motor Forward Direction |
+| **D8** | Right Motor | TB6612 AIN2 | Output | Right Motor Reverse Direction |
+| **D11** | Pushbutton 1 | Button 1 Leg 1 | Input (Pullup) | Start / Stop PID Toggle (Active-LOW to GND) |
+| **D12** | Pushbutton 2 | Button 2 Leg 1 | Input (Pullup) | Calibration Trigger / Advance (Active-LOW to GND) |
+| **D13** | Built-in LED | Onboard LED | Output | System status & calibration blink sequence |
+| **A0** | Sensor Array | Sensor OUT 0 | Input (Analog) | Sensor 0 (Far Left) |
+| **A1** | Sensor Array | Sensor OUT 1 | Input (Analog) | Sensor 1 (Mid Left-Outer) |
+| **A2** | Sensor Array | Sensor OUT 2 | Input (Analog) | Sensor 2 (Mid Left-Inner) |
+| **A3** | Sensor Array | Sensor OUT 3 | Input (Analog) | Sensor 3 (Center Left) |
+| **A4** | Sensor Array | Sensor OUT 4 | Input (Analog) | Sensor 4 (Center Right) |
+| **A5** | Sensor Array | Sensor OUT 5 | Input (Analog) | Sensor 5 (Mid Right-Inner) |
+| **A6** | Sensor Array | Sensor OUT 6 | Input (Analog) | Sensor 6 (Mid Right-Outer) |
+| **A7** | Sensor Array | Sensor OUT 7 | Input (Analog) | Sensor 7 (Far Right) |
+| **5V** | Power Rail | Buck Converter OUT+ | Power Input | Regulated 5.0V system bus |
+| **GND** | Ground Rail | Common Star Ground | Power Reference | Central system ground |
+
+---
+
+## 5. Pre-Flight Hardware Checklist
+- [ ] **Sensor Height**: Verify 3mm to 5mm ground clearance between TCRT5000 lenses and track.
+- [ ] **TB6612 STBY**: Confirm `STBY` pin is hardwired to 5V.
+- [ ] **Pushbuttons**: Confirm Button 1 is between D11 & GND, Button 2 is between D12 & GND (no connection to 5V).
+- [ ] **Star Ground**: Verify 0-ohm continuity between battery negative, driver ground, buck ground, sensor ground, and Arduino ground.
+- [ ] **Decoupling Capacitor**: 470uF - 1000uF capacitor installed across `VM` and `GND` with correct polarity.
+- [ ] **Buck Voltage**: Pre-adjust buck converter to exactly 5.0V DC before connecting to the Arduino Nano 5V pin.

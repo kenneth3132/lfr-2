@@ -1,0 +1,149 @@
+# Arduino Nano PID Line Follower Robot (LFR) — Implementation & Operational Manual
+
+## 1. Arduino IDE Setup & Configuration
+
+### 1.1 Installing Arduino IDE 2.x
+1. Download the latest release of Arduino IDE 2.x for Windows 64-bit from arduino.cc (https://www.arduino.cc/en/software).
+2. Execute the installer (arduino-ide_2.x.x_Windows_64bit.exe) and accept standard driver prompts.
+3. Launch Arduino IDE 2.x.
+
+### 1.2 Board Selection
+1. Open Arduino IDE.
+2. Navigate to: Tools -> Board -> Arduino AVR Boards -> Arduino Nano.
+3. If "Arduino AVR Boards" is not present in the menu:
+   - Navigate to Tools -> Board -> Boards Manager... (or press Ctrl + Shift + B).
+   - Search for Arduino AVR Boards and install the latest official core package.
+
+---
+
+## 2. ATmega328P Processor Selection (Critical for Nano Clones)
+
+Under Tools -> Processor, two primary options exist:
+1. "ATmega328P" (Optiboot Bootloader, 115,200 baud)
+2. "ATmega328P (Old Bootloader)" (ATmegaBOOT, 57,600 baud)
+
+### Technical Root Cause
+In 2018, official Arduino Nano boards were upgraded to the Optiboot bootloader running at 115,200 baud (occupying only 512 bytes). However, the vast majority of inexpensive clone Arduino Nano boards (identifiable by the CH340G/CH340C USB interface IC on the underside of the PCB) continue to ship with the legacy ATmegaBOOT firmware running at 57,600 baud.
+
+| Processor Selection | Bootloader | Upload Baud Rate | Common Boards |
+| :--- | :--- | :--- | :--- |
+| ATmega328P | Optiboot (v4.4+) | 115,200 baud | Official Nano (post-2018), custom Optiboot flashed |
+| ATmega328P (Old Bootloader) | ATmegaBOOT | 57,600 baud | CH340 clones, pre-2018 official Nano boards |
+
+IMPORTANT NOTE:
+If your upload hangs and outputs:
+avrdude: stk500_recv(): programmer is not responding
+avrdude: stk500_getsync() attempt 10 of 10: not in sync: resp=0x00
+Change Tools -> Processor to "ATmega328P (Old Bootloader)" and upload again.
+
+---
+
+## 3. USB-UART Driver Installation (Windows)
+
+### 3.1 CH340 / CH341 Drivers
+Clone Nano boards use the WCH CH340G USB-to-UART bridge:
+1. Download the driver installer CH341SER.EXE from WCH: http://www.wch-ic.com/downloads/CH341SER_EXE.html
+2. Right-click and Run as Administrator.
+3. Click Install. Wait for "Driver install success!".
+4. Plug the Arduino Nano into your PC via USB.
+
+### 3.2 Verification in Device Manager
+1. Press Win + X -> select Device Manager.
+2. Expand Ports (COM & LPT).
+3. Verify an entry: USB-SERIAL CH340 (COMx) or USB Serial Port (COMx). Note the assigned COM port.
+
+---
+
+## 4. COM Port Detection & Upload Troubleshooting
+
+### Common avrdude Errors & Solutions
+1. avrdude: stk500_getsync(): not in sync: resp=0x00
+   - Switch Processor to "ATmega328P (Old Bootloader)".
+   - Disconnect anything wired to D0 (RX) and D1 (TX).
+   - Try a manual reset: Press and hold Nano RESET button; click Upload; release RESET immediately when IDE displays "Uploading...".
+2. Serial port 'COMx' not found or Access is denied
+   - Close Arduino Serial Monitor, Serial Plotter, or any terminal (PuTTY) holding the port.
+   - Avoid unpowered USB hubs; plug directly into rear motherboard USB ports.
+3. Power-only USB Cables
+   - If Nano power LED lights red but no COM port appears in Device Manager, the cable lacks D+/D- data lines. Use a verified data-sync cable.
+
+---
+
+## 5. Pre-Power Hardware Audit & Safety Verification
+
+Before connecting the LiPo battery, perform this mandatory checklist:
+
+- [ ] TB6612FNG STBY tied to 5V: The standby pin must be connected to the regulated 5V rail. If STBY is LOW or floating, the H-bridge is disabled and motors will not move.
+- [ ] Common Ground Bus (Star Ground): Verify 0 Ohm continuity between Arduino Nano GND, TB6612FNG GND, Sensor Array GND, Buck Converter OUT(-), and LiPo (-).
+- [ ] Buck Converter Calibration: Measure Buck output with a multimeter before connecting to Nano 5V pin. Adjust trim pot until voltage is exactly 5.0V (+/-0.05V).
+- [ ] Motor Power (VM) vs Logic (VCC): TB6612FNG VM connects to battery positive (7.4V-11.1V). TB6612FNG VCC connects strictly to regulated 5.0V.
+- [ ] Decoupling Capacitor: Ensure a 470uF - 1000uF electrolytic capacitor (25V+) is soldered across TB6612FNG VM and GND to absorb inductive motor kickback.
+- [ ] Sensor Array Clearance: Ensure TCRT5000 IR sensor lenses are mounted 3mm to 5mm above the track surface.
+- [ ] Button Wiring: Button 1 (D11) and Button 2 (D12) must connect to GND (active-LOW with internal pullups). Do NOT connect to 5V.
+
+---
+
+## 6. Operational Walkthrough & State Machine
+
+```
+[BOOT] -> Load EEPROM -> [STATE_IDLE]
+  |
+  +-- Short Press Button 1 (D11) ----> [STATE_RUNNING_PID] (Follows Line)
+  |                                        |
+  |                                        +-- Short Press Button 1 (D11) --> [STATE_IDLE] (Halt Motors)
+  |
+  +-- Long Press Button 2 (>1.5s) ----> [CALIBRATION MODE] (LED Blinks 3x)
+                                           |
+                                           +-- Short Press B2 on White Surface --> (LED Blinks 2x)
+                                           |
+                                           +-- Short Press B2 on Black Line ----> (LED Blinks 2x)
+                                           |
+                                           +-- Short Press B2 in Center --------> (LED Blinks 2x)
+                                           |
+                                           +-- Motor Test: 0.5s Forward + 0.5s Backward
+                                           |
+                                           +-- Save to EEPROM (Magic Byte 0x5A) -> (LED Blinks 4x Fast)
+                                           |
+                                           v
+                                      [STATE_IDLE]
+```
+
+### 6.1 Calibration Sequence (Step-by-Step)
+1. Trigger: Long press Button 2 (D12) for >1.5 seconds. Status LED blinks 3 times.
+2. White Baseline: Place all 8 sensors over white track area. Short press Button 2. LED blinks 2 times.
+3. Black Baseline: Place all 8 sensors over black line/surface. Short press Button 2. LED blinks 2 times.
+4. Center Setpoint: Center robot symmetrically on black line. Short press Button 2. LED blinks 2 times.
+5. Motor Verification: Robot moves forward for 0.5s (500ms), backward for 0.5s (500ms), then stops.
+6. EEPROM Auto-Save: Baselines and center setpoint written to EEPROM with Magic Byte 0x5A. Status LED blinks 4 times fast.
+
+### 6.2 Running & Line-Lost Failsafe
+- Press Button 1 (D11) to start PID line following.
+- Press Button 1 again during runtime to immediately brake both motors (Emergency Stop).
+- Line-Lost Memory: If all sensors detect white (line lost), the robot executes differential reverse spin in the direction of lastKnownError to pivot back onto the line.
+
+---
+
+## 7. Systematic PID Tuning Manual
+
+### 7.1 Why Ki = 0.0 on Line Followers
+In high-speed line following:
+Correction = Kp * e(t) + Kd * de(t)/dt
+
+Ki is explicitly set to 0.0:
+1. Integral Windup: When entering prolonged curves, an integral accumulator winds up. Upon reaching the subsequent straightaway, the accumulated error forces the robot to keep turning, causing severe overshoot and track departure.
+2. Actuator Delay: Motor and chassis inertia introduce mechanical delay. Historical error aggregation produces phase lag, destabilizing the control loop.
+3. Correction: The setpoint is instantaneous line location. Proportional gives immediate reaction; Derivative predicts upcoming curve changes. Motor bias/drift must be trimmed via static software trim, never Ki.
+
+### 7.2 Step-by-Step Tuning Protocol
+1. Phase 1: Tune Kp (Proportional)
+   - Start with Kd = 0.0, Ki = 0.0, and moderate Base Speed (e.g. 100/255).
+   - Start with small Kp (e.g. 0.02).
+   - Increase Kp in increments until the robot successfully follows curves but exhibits continuous gentle side-to-side oscillation (hunting) on straights.
+   - Note this critical gain Kp,crit and reduce slightly to ~70%.
+2. Phase 2: Tune Kd (Derivative Damping)
+   - Increase Kd gradually (e.g. 0.2, 0.4, 0.8, 1.2).
+   - Observe straightaway behavior: the oscillation should disappear and the vehicle should track straight.
+   - If motors chatter/buzz or robot vibrates with high-frequency jitter, Kd is too high (amplifying sensor noise). Back off Kd by 25%.
+3. Phase 3: Scale Base Speed
+   - Increase Base Speed in steps of +20 PWM.
+   - Slightly increase Kp and Kd to account for higher vehicle momentum and centrifugal force.
