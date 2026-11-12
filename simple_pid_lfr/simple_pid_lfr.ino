@@ -245,6 +245,7 @@ void handleButtons() {
           blinkLED(3, 100, 100); // Visual launch countdown
           lastError = 0.0f;
           integral = 0.0f;
+          lastCentroid = calData.centerSetpoint;
           robotState = RUNNING_PID;
         } else if (robotState == RUNNING_PID) {
           Serial.println(F("[SYSTEM] Button 1 pressed: Stopping robot."));
@@ -287,10 +288,9 @@ void handleButtons() {
         }
       } else {
         // Button 2 Released
-        unsigned long pressDuration = currentMillis - btn2PressStartTime;
-
-        if (!btn2LongPressHandled && pressDuration < LONG_PRESS_MS) {
-          // Short Press Action: Step advance in calibration sequence
+        // In calibration states, any button release advances the step.
+        // Long-press guard only applies to IDLE entry.
+        if (!btn2LongPressHandled) {
           if (robotState == CALIB_WHITE) {
             calibrateWhite();
           } else if (robotState == CALIB_BLACK) {
@@ -428,9 +428,14 @@ void calibrateCenter() {
  * backward 500ms, stopping, saving EEPROM, and blinking LED 4 times fast.
  */
 void executeMotorTest() {
+  delay(600); // 600ms safety pause so user can release robot after center step blinks
   Serial.println(F("[MOTOR TEST] Forward verification (500ms @ PWM 120)..."));
   setMotors(120, 120);
   delay(500);
+
+  // Brief active dynamic brake to eliminate forward inertia and back-EMF spike
+  setMotors(0, 0);
+  delay(100);
 
   Serial.println(F("[MOTOR TEST] Backward verification (500ms @ PWM -120)..."));
   setMotors(-120, -120);
@@ -468,7 +473,7 @@ void readSensors() {
 
     // Map ADC reading to 0 - 1000 range
     long val = ((long)rawSensors[i] - (long)calData.sensorMin[i]) * 1000L / span;
-    normalizedSensors[i] = (int)constrain(val, 0, 1000);
+    normalizedSensors[i] = (int)constrain(val, 0L, 1000L);
   }
 }
 
@@ -618,7 +623,7 @@ void saveEEPROM() {
 bool loadEEPROM() {
   EEPROM.get(EEPROM_START_ADDR, calData);
 
-  if (calData.magic == EEPROM_MAGIC_BYTE) {
+  if (calData.magic == EEPROM_MAGIC_BYTE && !isnan(calData.centerSetpoint) && calData.centerSetpoint >= 0.0f && calData.centerSetpoint <= 7000.0f) {
     Serial.println(F("[EEPROM] Calibration profile verified and loaded from EEPROM."));
     Serial.print(F("[EEPROM] Center Setpoint: "));
     Serial.println(calData.centerSetpoint);

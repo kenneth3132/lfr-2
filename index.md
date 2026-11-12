@@ -55,14 +55,14 @@ The complete firmware implementation resides in `simple_pid_lfr.ino` (with an id
 | `calibrateWhite()` | Lines 336 – 359 | `void` | `void` | Samples white floor baseline (50 iterations over 150ms), populates `sensorMin[8]`, blinks LED 2 times, advances to `CALIB_BLACK`. |
 | `calibrateBlack()` | Lines 365 – 388 | `void` | `void` | Samples black line baseline (50 iterations over 150ms), populates `sensorMax[8]`, blinks LED 2 times, advances to `CALIB_CENTER`. |
 | `calibrateCenter()` | Lines 394 – 424 | `void` | `void` | Measures line centroid while centered (50 samples), populates `centerSetpoint`, blinks LED 2 times, advances to `MOTOR_TEST`. |
-| `executeMotorTest()` | Lines 430 – 451 | `void` | `void` | Verifies motor rotation (500ms forward @ PWM 120, 500ms backward @ PWM -120), saves EEPROM, blinks LED 4 times fast, returns to `IDLE`. |
-| `readSensors()` | Lines 460 – 473 | `void` | `void` | Reads 8 analog channels (A0–A7), maps raw ADC against `sensorMin`/`sensorMax` into normalized 0–1000 reflectance range. |
-| `computeCentroid()` | Lines 484 – 503 | `float` | `void` (uses `normalizedSensors[8]`) | Computes weighted center-of-gravity error position (0.0 to 7000.0); flags `lineLost` if total reflectance < 200. |
-| `computePID()` | Lines 512 – 559 | `void` | `void` | Executes high-speed PD loop ($K_p$, $K_d$, $K_i=0.0$), calculates steering correction, implements line-lost pivot recovery. |
-| `setMotors(left, right)` | Lines 569 – 599 | `void` | `int leftSpeed`, `int rightSpeed` | Hardware abstraction for TB6612FNG: drives direction pins (`BIN1`, `BIN2`, `AIN1`, `AIN2`) and writes PWM (`PWMB`, `PWMA`). |
-| `saveEEPROM()` | Lines 607 – 611 | `void` | `void` | Writes 37-byte `CalibrationData` structure to internal EEPROM offset 0 with magic byte `0x5A`. |
-| `loadEEPROM()` | Lines 618 – 636 | `bool` | `void` | Reads EEPROM offset 0; validates magic byte `0x5A`; loads calibration or writes default baseline fallback. |
-| `blinkLED(times, on, off)`| Lines 647 – 656 | `void` | `int times`, `int onDuration`, `int offDuration` | Blocking diagnostic utility to pulse onboard LED (D13) for visual feedback sequences. |
+| `executeMotorTest()` | Lines 430 – 456 | `void` | `void` | Verifies motor rotation (500ms forward @ PWM 120, 500ms backward @ PWM -120), saves EEPROM, blinks LED 4 times fast, returns to `IDLE`. |
+| `readSensors()` | Lines 465 – 478 | `void` | `void` | Reads 8 analog channels (A0–A7), maps raw ADC against `sensorMin`/`sensorMax` into normalized 0–1000 reflectance range. |
+| `computeCentroid()` | Lines 489 – 508 | `float` | `void` (uses `normalizedSensors[8]`) | Computes weighted center-of-gravity error position (0.0 to 7000.0); flags `lineLost` if total reflectance < 200. |
+| `computePID()` | Lines 517 – 564 | `void` | `void` | Executes high-speed PD loop ($K_p$, $K_d$, $K_i=0.0$), calculates steering correction, implements line-lost pivot recovery. |
+| `setMotors(left, right)` | Lines 574 – 604 | `void` | `int leftSpeed`, `int rightSpeed` | Hardware abstraction for TB6612FNG: drives direction pins (`BIN1`, `BIN2`, `AIN1`, `AIN2`) and writes PWM (`PWMB`, `PWMA`). |
+| `saveEEPROM()` | Lines 612 – 616 | `void` | `void` | Writes 37-byte `CalibrationData` structure to internal EEPROM offset 0 with magic byte `0x5A`. |
+| `loadEEPROM()` | Lines 623 – 641 | `bool` | `void` | Reads EEPROM offset 0; validates magic byte `0x5A`; loads calibration or writes default baseline fallback. |
+| `blinkLED(times, on, off)`| Lines 652 – 661 | `void` | `int times`, `int onDuration`, `int offDuration` | Blocking diagnostic utility to pulse onboard LED (D13) for visual feedback sequences. |
 
 ---
 
@@ -133,22 +133,22 @@ The complete firmware implementation resides in `simple_pid_lfr.ino` (with an id
 - **Behavior**: Executes 50 sensor reads and centroid computations with the robot centered over the line. Averages valid centroids to establish `calData.centerSetpoint`. If the line is undetectable, assigns default center (3500.0f). Blinks LED 2 times and advances to `MOTOR_TEST`.
 
 ### 3.8 `void executeMotorTest()`
-- **File / Lines**: `simple_pid_lfr.ino#L430-L451`
+- **File / Lines**: `simple_pid_lfr.ino#L430-L456`
 - **Inputs**: None.
 - **Outputs**: Motors driven, EEPROM saved, transitions to `IDLE`.
-- **Behavior**: Verifies motor driver polarity by driving forward for 500ms at PWM 120, then backward for 500ms at PWM -120, stops motors, calls `saveEEPROM()`, blinks status LED 4 times fast (100ms on, 100ms off), and returns `robotState` to `IDLE`.
+- **Behavior**: Verifies motor driver polarity by driving forward for 500ms at PWM 120, brief 100ms dynamic brake, then backward for 500ms at PWM -120, stops motors, calls `saveEEPROM()`, blinks status LED 4 times fast (100ms on, 100ms off), and returns `robotState` to `IDLE`.
 
 ### 3.9 `void readSensors()`
-- **File / Lines**: `simple_pid_lfr.ino#L460-L473`
+- **File / Lines**: `simple_pid_lfr.ino#L465-L478`
 - **Inputs**: Reads `SENSOR_PINS[0..7]` and `calData`.
 - **Outputs**: Populates `rawSensors[0..7]` and `normalizedSensors[0..7]`.
 - **Formula**:
   $$\text{span}_i = \text{calData.sensorMax}[i] - \text{calData.sensorMin}[i]$$
-  $$\text{normalizedSensors}[i] = \text{constrain}\left( \frac{(\text{rawSensors}[i] - \text{calData.sensorMin}[i]) \times 1000}{\text{span}_i}, 0, 1000 \right)$$
+  $$\text{normalizedSensors}[i] = \text{constrain}\left( \frac{(\text{rawSensors}[i] - \text{calData.sensorMin}[i]) \times 1000L}{\text{span}_i}, 0L, 1000L \right)$$
   - Prevents division by zero with a minimum span clamping threshold ($|\text{span}| \ge 20$).
 
 ### 3.10 `float computeCentroid()`
-- **File / Lines**: `simple_pid_lfr.ino#L484-L503`
+- **File / Lines**: `simple_pid_lfr.ino#L489-L508`
 - **Inputs**: None (uses `normalizedSensors[0..7]`).
 - **Outputs**: Calculated centroid position ($0.0 \dots 7000.0$), updates `lastCentroid`, updates `lineLost` flag.
 - **Formula**:
@@ -156,7 +156,7 @@ The complete firmware implementation resides in `simple_pid_lfr.ino` (with an id
   - **Threshold Check**: If $\sum \text{normalizedSensors}[i] < 200$, line is classified as lost (`lineLost = true`), and the function returns `lastCentroid`. Otherwise, `lineLost = false`, updates `lastCentroid`, and returns the computed float.
 
 ### 3.11 `void computePID()`
-- **File / Lines**: `simple_pid_lfr.ino#L512-L559`
+- **File / Lines**: `simple_pid_lfr.ino#L517-L564`
 - **Inputs**: None (reads global state, gains, and setpoints).
 - **Outputs**: Modifies `lastError`, `integral`, drives `setMotors()`.
 - **Control Law**:
@@ -170,7 +170,7 @@ The complete firmware implementation resides in `simple_pid_lfr.ino` (with an id
   - **Line-Lost Recovery**: If `lineLost == true`, turns ON status LED (D13). If `lastError > 0` (line lost to right), pivots right (`recoverySpeed, -recoverySpeed/2`). If `lastError < 0` (line lost to left), pivots left (`-recoverySpeed/2, recoverySpeed`).
 
 ### 3.12 `void setMotors(int leftSpeed, int rightSpeed)`
-- **File / Lines**: `simple_pid_lfr.ino#L569-L599`
+- **File / Lines**: `simple_pid_lfr.ino#L574-L604`
 - **Inputs**: `int leftSpeed` (-255 to 255), `int rightSpeed` (-255 to 255).
 - **Outputs**: Hardware pins D2, D4, D5, D6, D7, D8 written.
 - **Logic**:
@@ -182,19 +182,19 @@ The complete firmware implementation resides in `simple_pid_lfr.ino` (with an id
   - `rightSpeed == 0`: `PIN_AIN1 = LOW`, `PIN_AIN2 = LOW`, `PIN_PWMA = 0` (Active dynamic brake).
 
 ### 3.13 `void saveEEPROM()`
-- **File / Lines**: `simple_pid_lfr.ino#L607-L611`
+- **File / Lines**: `simple_pid_lfr.ino#L612-L616`
 - **Inputs**: Reads global struct `calData`.
 - **Outputs**: Writes struct to internal EEPROM at address 0.
 - **Behavior**: Sets `calData.magic = 0x5A` and calls `EEPROM.put(0, calData)`.
 
 ### 3.14 `bool loadEEPROM()`
-- **File / Lines**: `simple_pid_lfr.ino#L618-L636`
+- **File / Lines**: `simple_pid_lfr.ino#L623-L641`
 - **Inputs**: Reads internal EEPROM at address 0.
 - **Outputs**: Populates `calData`, returns `true` if valid, `false` if uninitialized.
-- **Behavior**: Calls `EEPROM.get(0, calData)`. If `calData.magic == 0x5A`, accepts stored profile. If magic byte does not match, writes safe defaults (`sensorMin = 100`, `sensorMax = 900`, `centerSetpoint = 3500.0f`).
+- **Behavior**: Calls `EEPROM.get(0, calData)`. If `calData.magic == 0x5A` and `centerSetpoint` is not NaN/in-range, accepts stored profile. If validation fails, writes safe defaults (`sensorMin = 100`, `sensorMax = 900`, `centerSetpoint = 3500.0f`).
 
 ### 3.15 `void blinkLED(int times, int onDuration, int offDuration)`
-- **File / Lines**: `simple_pid_lfr.ino#L647-L656`
+- **File / Lines**: `simple_pid_lfr.ino#L652-L661`
 - **Inputs**: `int times`, `int onDuration` (ms), `int offDuration` (ms).
 - **Outputs**: Onboard LED (D13) toggled via `digitalWrite()` and `delay()`.
 - **Behavior**: Iteratively drives LED HIGH for `onDuration`, LOW for `offDuration`.
