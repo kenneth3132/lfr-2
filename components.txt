@@ -89,14 +89,14 @@ The robot utilizes a differential drive configuration with high-speed N20 micro 
 | **D11** | Pushbutton 1 | Button 1 Leg 1 | Input (Pullup) | Start / Stop PID Toggle (Active-LOW to GND) |
 | **D12** | Pushbutton 2 | Button 2 Leg 1 | Input (Pullup) | Calibration Trigger / Advance (Active-LOW to GND) |
 | **D13** | Built-in LED | Onboard LED | Output | System status & calibration blink sequence |
-| **A0** | Sensor Array | Sensor OUT 0 | Input (Analog) | Sensor 0 (Far Left) |
-| **A1** | Sensor Array | Sensor OUT 1 | Input (Analog) | Sensor 1 (Mid Left-Outer) |
-| **A2** | Sensor Array | Sensor OUT 2 | Input (Analog) | Sensor 2 (Mid Left-Inner) |
-| **A3** | Sensor Array | Sensor OUT 3 | Input (Analog) | Sensor 3 (Center Left) |
-| **A4** | Sensor Array | Sensor OUT 4 | Input (Analog) | Sensor 4 (Center Right) |
-| **A5** | Sensor Array | Sensor OUT 5 | Input (Analog) | Sensor 5 (Mid Right-Inner) |
-| **A6** | Sensor Array | Sensor OUT 6 | Input (Analog) | Sensor 6 (Mid Right-Outer) |
-| **A7** | Sensor Array | Sensor OUT 7 | Input (Analog) | Sensor 7 (Far Right) |
+| **A7** | Sensor Array | Sensor OUT 7 | Input (Analog) | Physical Sensor 0 (Far Left, Array Index 0) |
+| **A6** | Sensor Array | Sensor OUT 6 | Input (Analog) | Physical Sensor 1 (Mid Left-Outer, Array Index 1) |
+| **A5** | Sensor Array | Sensor OUT 5 | Input (Analog) | Physical Sensor 2 (Mid Left-Inner, Array Index 2) |
+| **A4** | Sensor Array | Sensor OUT 4 | Input (Analog) | Physical Sensor 3 (Center Left, Array Index 3) |
+| **A3** | Sensor Array | Sensor OUT 3 | Input (Analog) | Physical Sensor 4 (Center Right, Array Index 4) |
+| **A2** | Sensor Array | Sensor OUT 2 | Input (Analog) | Physical Sensor 5 (Mid Right-Inner, Array Index 5) |
+| **A1** | Sensor Array | Sensor OUT 1 | Input (Analog) | Physical Sensor 6 (Mid Right-Outer, Array Index 6) |
+| **A0** | Sensor Array | Sensor OUT 0 | Input (Analog) | Physical Sensor 7 (Far Right, Array Index 7) |
 | **5V** | Power Rail | Buck Converter OUT+ | Power Input | Regulated 5.0V system bus |
 | **GND** | Ground Rail | Common Star Ground | Power Reference | Central system ground |
 

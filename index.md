@@ -26,14 +26,14 @@ The microcontroller is an **Arduino Nano (ATmega328P, 16 MHz, 5V logic)**. The m
 | **D11** | Button 1 (`PIN_BTN_START`) | Digital Input | Active-LOW (`INPUT_PULLUP`) | Line tracking Start / Stop toggle; calibration abort |
 | **D12** | Button 2 (`PIN_BTN_CALIB`) | Digital Input | Active-LOW (`INPUT_PULLUP`) | Long press (>1.5s): Enter Calib; Short press: Step advance; During PID: Emergency Stop |
 | **D13** | Built-in Status LED (`PIN_LED_STATUS`) | Digital Output | Active-HIGH | Optical UI indicators (countdown, calibration steps, line-lost search alert) |
-| **A0** | IR Reflectance Sensor 0 | Analog Input | 0 – 5V (0 – 1023 ADC) | Far Left phototransistor (Physical Coordinate: 0) |
-| **A1** | IR Reflectance Sensor 1 | Analog Input | 0 – 5V (0 – 1023 ADC) | Mid Left-Outer phototransistor (Physical Coordinate: 1000) |
-| **A2** | IR Reflectance Sensor 2 | Analog Input | 0 – 5V (0 – 1023 ADC) | Mid Left-Inner phototransistor (Physical Coordinate: 2000) |
-| **A3** | IR Reflectance Sensor 3 | Analog Input | 0 – 5V (0 – 1023 ADC) | Center Left phototransistor (Physical Coordinate: 3000) |
-| **A4** | IR Reflectance Sensor 4 | Analog Input | 0 – 5V (0 – 1023 ADC) | Center Right phototransistor (Physical Coordinate: 4000) |
-| **A5** | IR Reflectance Sensor 5 | Analog Input | 0 – 5V (0 – 1023 ADC) | Mid Right-Inner phototransistor (Physical Coordinate: 5000) |
-| **A6** | IR Reflectance Sensor 6 | Analog Input | 0 – 5V (0 – 1023 ADC) | Mid Right-Outer phototransistor (Analog-only ADC pin, Physical Coordinate: 6000) |
-| **A7** | IR Reflectance Sensor 7 | Analog Input | 0 – 5V (0 – 1023 ADC) | Far Right phototransistor (Analog-only ADC pin, Physical Coordinate: 7000) |
+| **A7** | IR Sensor (Array Index 0) | Analog Input | 0 – 5V (0 – 1023 ADC) | Physical Far Left phototransistor (Coordinate: 0) |
+| **A6** | IR Sensor (Array Index 1) | Analog Input | 0 – 5V (0 – 1023 ADC) | Physical Mid Left-Outer phototransistor (Coordinate: 1000) |
+| **A5** | IR Sensor (Array Index 2) | Analog Input | 0 – 5V (0 – 1023 ADC) | Physical Mid Left-Inner phototransistor (Coordinate: 2000) |
+| **A4** | IR Sensor (Array Index 3) | Analog Input | 0 – 5V (0 – 1023 ADC) | Physical Center Left phototransistor (Coordinate: 3000) |
+| **A3** | IR Sensor (Array Index 4) | Analog Input | 0 – 5V (0 – 1023 ADC) | Physical Center Right phototransistor (Coordinate: 4000) |
+| **A2** | IR Sensor (Array Index 5) | Analog Input | 0 – 5V (0 – 1023 ADC) | Physical Mid Right-Inner phototransistor (Coordinate: 5000) |
+| **A1** | IR Sensor (Array Index 6) | Analog Input | 0 – 5V (0 – 1023 ADC) | Physical Mid Right-Outer phototransistor (Coordinate: 6000) |
+| **A0** | IR Sensor (Array Index 7) | Analog Input | 0 – 5V (0 – 1023 ADC) | Physical Far Right phototransistor (Coordinate: 7000) |
 | **5V** | Regulated Logic Rail | Power Bus | +5.0V DC | Output of external Mini-360 / LM2596 buck converter supplying MCU, sensors, and driver logic |
 | **GND** | System Common Ground | Reference | 0.0V DC | Star Ground Junction tying MCU GND, Driver GND, Buck GND, Sensor GND, Battery (-) |
 | **TB6612 STBY**| Driver Standby Pin | Power Rail | +5.0V DC (Hardwired) | **Mandatory:** Tied directly to 5V bus. Driver produces zero output if floating or low |

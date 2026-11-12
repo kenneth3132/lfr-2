@@ -79,6 +79,8 @@ Before connecting the LiPo battery, perform this mandatory checklist:
 - [ ] Motor Power (VM) vs Logic (VCC): TB6612FNG VM connects to battery positive (7.4V-11.1V). TB6612FNG VCC connects strictly to regulated 5.0V.
 - [ ] Decoupling Capacitor: Ensure a 470uF - 1000uF electrolytic capacitor (25V+) is soldered across TB6612FNG VM and GND to absorb inductive motor kickback.
 - [ ] Sensor Array Clearance: Ensure TCRT5000 IR sensor lenses are mounted 3mm to 5mm above the track surface.
+- [ ] Sensor Array Orientation: Pin A7 is on physical LEFT, Pin A0 is on physical RIGHT (firmware array SENSOR_PINS is mapped accordingly).
+- [ ] Track Compatibility: Pre-configured for 30 mm black line on white surface with 2S LiPo (7.4V) and 600 RPM N20 motors.
 - [ ] Button Wiring: Button 1 (D11) and Button 2 (D12) must connect to GND (active-LOW with internal pullups). Do NOT connect to 5V.
 
 ---

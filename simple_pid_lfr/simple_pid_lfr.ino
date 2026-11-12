@@ -48,8 +48,10 @@ const uint8_t PIN_BTN_START  = 11; // Button 1: PID Run / Stop toggle (Active-LO
 const uint8_t PIN_BTN_CALIB  = 12; // Button 2: Calibration trigger & advance (Active-LOW to GND)
 const uint8_t PIN_LED_STATUS = 13; // Built-in Status LED
 
-// 8-Channel TCRT5000 IR Sensor Array Analog Inputs
-const uint8_t SENSOR_PINS[8] = { A0, A1, A2, A3, A4, A5, A6, A7 };
+// 8-Channel TCRT5000 / RSL 08 IR Sensor Array Analog Inputs
+// Physical Alignment: A7 is on physical LEFT, A0 is on physical RIGHT.
+// Array index 0 = A7 (Far Left, Coordinate 0) ... Index 7 = A0 (Far Right, Coordinate 7000)
+const uint8_t SENSOR_PINS[8] = { A7, A6, A5, A4, A3, A2, A1, A0 };
 
 // ---------------------------------------------------------------------------
 // EEPROM CALIBRATION STORAGE STRUCTURE
@@ -101,11 +103,11 @@ const float Ki = 0.0f;
 // Crucial for high-speed stability and preventing overshoot when re-centering.
 float Kd = 1.250f;
 
-// Speed Configuration (PWM range: 0 - 255)
-int baseSpeed     = 150;  // Cruising speed on straight track sections
-int maxSpeed      = 230;  // Maximum PWM ceiling to prevent motor driver saturation
-int minSpeed      = -100; // Negative allows reverse rotation for tight pivot turns
-int recoverySpeed = 120;  // Controlled rotational speed during line-lost recovery
+// Speed Configuration for 2S LiPo (7.4V) & 600 RPM N20 Motors (PWM range: 0 - 255)
+int baseSpeed     = 140;  // Cruising speed on straight track sections (optimized for 2S 600 RPM)
+int maxSpeed      = 220;  // Maximum PWM ceiling to prevent motor driver saturation
+int minSpeed      = -80;  // Negative allows reverse rotation for tight pivot turns
+int recoverySpeed = 110;  // Controlled rotational speed during line-lost recovery
 
 // ---------------------------------------------------------------------------
 // SENSOR PROCESSING & PID RUNTIME VARIABLES
